@@ -2,11 +2,9 @@ clc;
 clear;
 close all;
 
-%% Load dataset
 Dataset = readtable('Dataset1.xlsx');
-Ts = 0.0203;  % Sampling time
+Ts = 0.0203;
 
-%% Kalman Filter Parameters
 Q = 5e-1 * eye(3);     
 R = diag([2.5e-3, 2.5e-3, 1e-2]);                  
 P = 1e3*eye(6);            
@@ -14,18 +12,15 @@ xplus = zeros(6,1);
 
 C = [1, 0, 0, 0, 0, 0;
      0, 1, 0, 0, 0, 0;
-     0, 0, 1, 0, 0, 0];            % Measurement matrix
+     0, 0, 1, 0, 0, 0];          
 
 N = height(Dataset);
 
-% Preallocate arrays
 states = zeros(N, 6);
 P_store = zeros(6,6,N);
 meas = zeros(N,3);
 
-%% Kalman Filter Loop
 for k = 1:N
-    % --- Read sensor measurements ---
     ax_g = Dataset.Acceleration_X(k) / 1000;
     ay_g = Dataset.Acceleration_Y(k) / 1000;
     az_g = Dataset.Acceleration_Z(k) / 1000;
@@ -40,7 +35,6 @@ for k = 1:N
     my = Dataset.Magnetometer_Y(k) * 0.1;
     mz = Dataset.Magnetometer_Z(k) * 0.1;
 
-    % --- Calculate Euler angles from sensors ---
     phi_ = atan2(ay, az);
     theta_ = atan2(-ax, sqrt(ay^2 + az^2));
     psi_ = atan2(mz*sin(phi_) - my*cos(phi_), ...
@@ -50,21 +44,18 @@ for k = 1:N
     meas(k,:) = Zt;
 
     if k == 1
-        xplus = [Zt; 0; 0; 0];  % Initialize state with angles + zeros for angular velocity
+        xplus = [Zt; 0; 0; 0]; 
         states(k,:) = xplus;
         P_store(:,:,k) = P;
         continue
     end
 
-    % --- Compute Jacobians ---
-    F_k = Fk(xplus, omega, Ts);  % User-defined function
-    L_k = Lk(xplus, omega, Ts);  % User-defined function
+    F_k = Fk(xplus, omega, Ts);  
+    L_k = Lk(xplus, omega, Ts); 
 
-    % --- Predict ---
     P = F_k*P*F_k' + L_k*Q*L_k';
-    x_ = xplus + state_derivative(xplus, omega) * Ts;  % User-defined function
+    x_ = xplus + state_derivative(xplus, omega) * Ts; 
 
-    % --- Update ---
     S = C*P*C' + R;
     K = (P*C') / S;
 
@@ -81,7 +72,6 @@ for k = 1:N
 
     P = (eye(6) - K*C) * P;
 
-    % --- Store results ---
     states(k,:) = xplus;
     P_store(:,:,k) = P;
 end
